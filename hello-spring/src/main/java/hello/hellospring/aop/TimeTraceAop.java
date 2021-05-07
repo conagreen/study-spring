@@ -1,4 +1,4 @@
-package hello.hellospring.controller;
+package hello.hellospring.aop;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
