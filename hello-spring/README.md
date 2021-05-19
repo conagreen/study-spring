@@ -17,7 +17,7 @@
 >- Java 11 설치
 >- IDE: IntelliJ 또는 Eclipse 설치 (저는 IntelliJ IDEA Ultimate 버전으로 진행하였습니다.)
 
-**주의!** 가급적 JDK 11버전을 설치해주세요. 다른 버전을 설치하면 정상 작동하지 않을 가능성이 높습니다. 
+**주의!** 가급적 JDK 11버전을 설치를 권장한다. 다른 버전을 설치하면 정상 작동하지 않을 가능성이 높음. 
 
 - 프로젝트 선택
 >- Project: Gradle Project
@@ -74,7 +74,7 @@ dependencies {
 
 **IntelliJ JDK 설치 확인**
 
-IntelliJ에서 자바 실행이 잘 안되면 다음 부분을 확인해주세요.(일반적으로 자동으로 설정이 되어 있지만, 가끔 문제가 되는 경우에 참고하시면 됩니다.)
+IntelliJ에서 자바 실행이 잘 안되면 다음 부분을 확인하자.(일반적으로 자동으로 설정이 되어 있지만, 가끔 문제가 되는 경우에 참고)
 
 - 프로젝트 JDK 설정 -> 11로 지정
 - Gradle JDK 설정 -> 11로 지정
@@ -102,6 +102,7 @@ IntelliJ에서 자바 실행이 잘 안되면 다음 부분을 확인해주세�
 
 ### 1-3. View 환경설정
 **Welcome Page 만들기**
+
 `resources/static/index.html`
 ```Html
 <!DOCTYPE HTML>
@@ -171,8 +172,8 @@ IntelliJ에서 자바 실행이 잘 안되면 다음 부분을 확인해주세�
 
 **윈도우 사용자를 위한 팁**
 1. 콘솔로 이동 -> 명령 프롬프트(cmd)로 이동
-2. `./gradlew` -> `gradlew.bat`를 실행하면 됩니다.
-3. 명령 프롬프트에서 `gradlew.bat`를 실행하려면 `gradlew`하고 엔터를 치면 됩니다.
+2. `./gradlew` -> `gradlew.bat`를 실행하면 된다.
+3. 명령 프롬프트에서 `gradlew.bat`를 실행하려면 `gradlew`하고 엔터를 치면 된다.
 4. `gradlew build`
 5. 폴더 목록 확인 `ls` -> `dir`
 - 윈도우에서 Git bash 터미널 사용하기
@@ -182,26 +183,445 @@ IntelliJ에서 자바 실행이 잘 안되면 다음 부분을 확인해주세�
 
 ## 2. 스프링 웹 개발 기초
 ### 2-1. 정적 컨텐츠
+- 스프링 부트 정적 컨텐츠 기능
+- https://docs.spring.io/spring-boot/docs/2.3.1.RELEASE/reference/html/spring-boot-features.html#boot-features-spring-mvc-static-content
+
+`resources/static/hello-static.html`
+```Html
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>static content</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<body>
+  정적 컨텐츠 입니다.
+</body>
+</html>
+```
+**실행**
+- http://localhost:8080/hello-static.html
 
 ### 2-2. MVC와 템플릿 엔진
+- MVC: Model, View, Controller
+
+**Controller**
+```Java
+@Controller
+public class HelloController {
+  
+  @GetMapping("hello-mvc")
+  public String helloMvc(@RequestParam("name") String name, Model model) {
+    model.addAttribute("name", name);
+    return "hello-template";
+  }
+}
+```
+**View**
+
+`resources/template/hello-template.html`
+```Html
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<p th:text="'hello ' + ${name}">hello! empty</p>
+</body>
+</html>
+```
+**실행**
+- http://localhost:8080/hello-mvc?name=spring
+
+**MVC, 템플릿 엔진 이미지**
+
+![](src/main/resources/static/image/mvc-template-engine.png)
 
 ### 2-3. API
+**@ResponseBody 문자 반환**
+```Java
+@Controller
+public class HelloController {
+  @GetMapping("hello-string")
+  @ResponseBody
+  public String helloString(@RequestParam("name") String name) {
+      return "hello " + name;
+  }
+}
+```
+- `@ResponseBody`를 사용하면 뷰 리졸버(`viewResolver`)를 사용하지 않음
+- 대신에 HTTP의 BODY에 문자 내용을 직접 반환(HTML BODY TAG를 말하는 것이 아님)
 
+**실행**
+- http://localhost:8080/hello-string?name=spring
+
+**ResponseBody 객체 반환**
+```Java
+@Controller
+public class HelloController {
+
+  @GetMapping("hello-api")
+  @ResponseBody
+  public Hello helloApi(@RequestParam("name") String name) {
+      Hello hello = new Hello();
+      hello.setName(name);
+      return hello;
+  }
+
+  static class Hello {
+      private String name;
+
+      public String getName() {
+          return name;
+      }
+
+      public void setName(String name) {
+          this.name = name;
+      } 
+  }
+}
+```
+**실행**
+- http://localhost:8080/hello-api?name=spring
+
+**@ResponseBody 사용 원리**
+
+![](src/main/resources/static/image/ResponseBody-principle.png)
+
+- `@ResponseBody`를 사용
+  - HTTP의 BODY에 문자 내용을 직접 반환
+  - `viewResolver` 대신에 `HttpMessageConverter`가 동작
+  - 기본 문자처리: `StringHttpMessageConverter`
+  - 기본 객체처리: `MappingJackson2HttpMessageConverter`
+  - byte 처리 등등 기타 여러 HttpMessageConverter가 기본으로 등록되어 있음
+
+**참고: 클라이언트 HTTP Accept 헤더와 서버의 컨트롤러 반환 타입 정보 둘을 조합해서 `HttpMessageConverter`가 선택된다.**
 
 <br>
 
 ## 3. 회원 관리 예제 - 백엔드 개발
 ### 3-1. 비즈니스 요구사항 정리
+- 데이터: 회원ID, 이름
+- 기능: 회원 등록, 조회
+- 아직 데이터 저장소가 선정되지 않음(가상의 시나리오)
+
+**일반적인 웹 애플리케이션 계층 구조**
+
+![](src/main/resources/static/image/layer-of-web-app.png)
+
+- 컨트롤러: 웹 MVC의 컨트롤러 역할
+- 서비스: 핵심 비즈니스 로직 구현
+- 리포지토리: 데이터베이스에 접근, 도메인 객체를 DB에 저장하고 관리
+- 도메인: 비즈니스 도메인 객체, 예) 회원 주문, 쿠폰 등등 주로 데이터베이스에 저장하고 관리됨
+
+**클래스 의존관계**
+
+![](src/main/resources/static/image/dependency-relationship.png)
+
+- 아직 데이터 저장소가 선정되지 않아서, 우선 인터페이스로 구현 클래스를 변경할 수 있도록 설계
+- 데이터 저장소는 RDB, NoSQL 등등 다양한 저장소를 고민중인 상황으로 가정
+- 개발을 진행하기 위해서 초기 개발 단계에서는 구현체로 가벼운 메모리 기반의 데이터 저장소 사용
 
 ### 3-2. 회원 도메인과 리포지토리 만들기
+**회원 객체**
+```Java
+package hello.hellospring.domain;
+
+public class Member {
+  
+  private Long id;
+  private String name;
+      
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+      this.name = name;
+  } 
+}
+```
+
+**회원 리포지토리 인터페이스**
+```Java
+package hello.hellospring.repository;
+
+import hello.hellospring.domain.Member;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface MemberRepository {
+
+  Member save(Member member);
+  Optional<Member> findById(Long id);
+  Optional<Member> findByName(String name);
+  List<Member> findAll();
+
+}
+```
+
+**회원 리포지토리 메모리 구현체**
+```Java
+package hello.hellospring.repository;
+
+import hello.hellospring.domain.Member;
+
+import java.util.*;
+
+ /**
+* 동시성 문제가 고려되어 있지 않음, 실무에서는 ConcurrentHashMap, AtomicLong 사용 고려
+*/
+public class MemoryMemberRepository implements MemberRepository {
+
+    private static Map<Long, Member> store = new HashMap<>();
+    private static long sequence = 0L;
+
+    @Override
+    public Member save(Member member) {
+        member.setId(++sequence);
+        store.put(member.getId(), member);
+        return member;
+    }
+
+    @Override
+    public Optional<Member> findById(Long id) {
+        return Optional.ofNullable(store.get(id));
+    }
+
+    @Override
+    public List<Member> findAll() {
+        return new ArrayList<>(store.values());
+    }
+
+    @Override
+    public Optional<Member> findByName(String name) {
+        return store.values().stream()
+                .filter(member -> member.getName().equals(name))
+                .findAny();
+    }
+
+    public void clearStore() {
+        store.clear();
+    } 
+}
+```
 
 ### 3-3. 회원 리포지토리 테스트 케이스 작성
+개발한 기능을 실행해서 테스트 할 때 자바의 main 메서드를 통해서 실행하거나, 웹 애플리케이션의 컨트롤러를 통해서 해당 기능을 실행한다. 이러한 방법은 준비하고 실행하는데 오래 걸리고, 반복 실행하기 어렵고 여러 테스트를 한번에 실행하기 어렵다는 단점이 있다. 자바는 JUnit이라는 프레임워크로 테스트를 실행해서 이러한 문제를 해결한다.
+
+**회원 리포지토리 메모리 구현체 테스트**
+
+`src/test/java`하위 폴더에 생성한다.
+```Java
+package hello.hellospring.repository;
+
+import hello.hellospring.domain.Member;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.*;
+
+class MemoryMemberRepositoryTest {
+  
+  MemoryMemberRepository repository = new MemoryMemberRepository();
+
+  @AfterEach
+  public void afterEach() {
+      repository.clearStore();
+  }
+
+  @Test
+  public void save() {
+      //given
+      Member member = new Member();
+      member.setName("spring");
+      
+      //when
+      repository.save(member);
+
+      //then
+      Member result = repository.findById(member.getId()).get();
+      assertThat(result).isEqualTo(member);
+  }
+
+  @Test
+  public void findByName() {
+      //given
+      Member member1 = new Member();
+      member1.setName("spring1");
+      repository.save(member1);
+
+      Member member2 = new Member();
+      member2.setName("spring2");
+      repository.save(member2);
+
+      //when
+      Member result = repository.findByName("spring1").get();
+
+      //then
+      assertThat(result).isEqualTo(member1);
+  }
+
+  @Test
+  public void findAll() {
+      //given
+      Member member1 = new Member();
+      member1.setName("spring1");
+      repository.save(member1);
+
+      Member member2 = new Member();
+      member2.setName("spring2");
+      repository.save(member2);
+
+      //when
+      List<Member> result = repository.findAll();
+     
+     //then
+      assertThat(result.size()).isEqualTo(2);    
+  }
+}
+```
+- `@AfterEach`: 한번에 여러 테스트를 실행하면 메모리 DB에 직전 테스트의 결과가 남을 수 있다. 이렇게 되면 이전 테스트 때문에 다음 테스트가 실패할 가능성이 있다. `@AfterEach`를 사용하면 각 테스트가 종료될 때 마다 이 기능을 실행한다. 여기서는 메모리 DB에 저장된 데이터를 삭제한다.
+- 테스틑 각각 독립적으로 실행되어야 한다. 테스트 순서에 의존관계가 있는 것은 좋은 테스트가 아니다.
 
 ### 3-4. 회원 서비스 개발
+```Java
+package hello.hellospring.service;
+  
+import hello.hellospring.domain.Member;
+import hello.hellospring.repository.MemberRepository;
+  
+import java.util.List;
+import java.util.Optional;
+
+public class MemberService {
+
+    private final MemberRepository memberRepository = new MemoryMemberRepository();
+
+    /**
+    * 회원가입
+    */
+    public Long join(Member member) {
+      
+      validateDuplicateMember(member); //중복 회원 검증 
+      memberRepository.save(member);
+      return member.getId();
+    }
+
+    private void validateDuplicateMember(Member member) {
+        memberRepository.findByName(member.getName())
+                .ifPresent(m -> {
+                    throw new IllegalStateException("이미 존재하는 회원입니다.");
+                });
+    }
+
+    /**
+    *전체 회원 조회
+    */
+    public List<Member> findMembers() {
+        return memberRepository.findAll();
+    }
+
+    /**
+    회원 조회
+    */
+    public Optional<Member> findOne(Long memberId) {
+        return memberRepository.findById(memberId);
+    } 
+}
+```
 
 ### 3-5. 회원 서비스 테스트
 
+**기존에는 회원 서비스가 메모리 회원 리포지토리를 직접 생성하게 했다.**
+```Java
+public class MemberService {
 
+    private final MemberRepository memberRepository = new MemoryMemberRepository();
+
+}
+```
+**회원 리포지토리의 코드가 회원 서비스 코드를 DI 가능하게 변경한다.**
+```Java
+public class MemberService {
+
+    private final MemberRepository memberRepository;
+
+        public MemberService(MemberRepository memberRepository) {
+            this.memberRepository = memberRepository;
+        }
+        ... 
+}
+```
+
+**회원 서비스 테스트**
+```Java
+package hello.hellospring.service;
+
+import hello.hellospring.domain.Member;
+import hello.hellospring.repository.MemoryMemberRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+class MemberServiceTest {
+  
+  MemberService memberService;
+  MemoryMemberRepository memberRepository;
+      
+  @BeforeEach
+  public void beforeEach() {
+      memberRepository = new MemoryMemberRepository();
+      memberService = new MemberService(memberRepository);
+  }
+
+  @AfterEach
+  public void afterEach() {
+      memberRepository.clearStore();
+  }
+
+  @Test
+  public void 회원가입() throws Exception {
+      //Given
+      Member member = new Member();
+      member.setName("hello");
+
+      //When
+      Long saveId = memberService.join(member);
+
+      //Then
+      Member findMember = memberRepository.findById(saveId).get();
+      assertEquals(member.getName(), findMember.getName());
+  }
+
+  @Test
+  public void 중복_회원_예외() throws Exception {
+      //Given
+      Member member1 = new Member();
+      member1.setName("spring");
+          
+      Member member2 = new Member();
+      member2.setName("spring");
+
+      //When
+      memberService.join(member1);
+      IllegalStateException e = assertThrows(IllegalStateException.class,
+              () -> memberService.join(member2)); // 예외가 발생해야 한다. 
+              
+      assertThat(e.getMessage()).isEqualTo("이미 존재하는 회원입니다.");
+  } 
+}
+```
 <br>
 
 ## 4. 스프링 빈과 의존관계
