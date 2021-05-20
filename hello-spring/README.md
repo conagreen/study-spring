@@ -69,7 +69,7 @@
 **Gradle 전체 설정**
 
 `build.gradle`
-```
+```Java
 plugins {
     id 'org.springframework.boot' version '2.3.1.RELEASE'
     id 'io.spring.dependency-management' version '1.0.9.RELEASE'
@@ -983,7 +983,7 @@ H2 데이터베이스에 접근해서 `member` 테이블 생성
 [환경설정]
 
 **build.gradle 파일에 jdbc, h2 데이터베이스 관련 라이브러리 추가**
-```
+```Java
 implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 runtimeOnly 'com.h2database:h2'
 ```
@@ -991,7 +991,7 @@ runtimeOnly 'com.h2database:h2'
 **스프링 부트 데이터베이스 연결 설정 추가**
 
 `resources/application.properties`
-```
+```Java
 spring.datasource.url=jdbc:h2:tcp://localhost/~/test
 spring.datasource.driver-class-name=org.h2.Driver
 spring.datasource.username=sa
