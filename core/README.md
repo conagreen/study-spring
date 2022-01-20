@@ -336,3 +336,144 @@ public MemberRepository memberRepository() {
 - `@Bean`만 사용해도 스프링 빈으로 등록되지만, 싱글톤을 보장하지 않는다.
   - 의존관계 주입이 필요해서 메서드를 직접 호출할 때 싱글톤을 보장하지 않는 것
 - 크게 고민할 것 없이 스프링 설정 정보는 항상 `@Configuration`을 사용하자!
+
+### 컴포넌트 스캔
+
+#### [ 컴포넌트 스캔과 의존관계 자동 주입 시작하기 ]
+스프링은 자바 코드의 `@Bean`이나 XML의 `<bean>` 등의 설정 정보가 없어도 자동으로 스프링 빈을 등록하는 '컴포넌트 스캔' 이라는 기능을 제공한다. 또한, 의존관계도 자동으로 주입하는 `@Autowired` 라는 기능도 제공한다.
+- 컴포넌트 스캔을 사용하려면 먼저 `ComponentScan`을 설정 정보에 붙여주면 된다.
+- 기존의 `@Configuration`을 적용한 설정 클래스와는 다르게 `@Bean`으로 등록한 클래스가 하나도 없다.
+- 컴포넌트 스캔의 이름 그대로 `@Component` 애노테이션이 붙은 클래스를 스캔해서 스프링 빈으로 등록한다. 스프링 빈으로 등록할 클래스에 `@Component`를 붙여주자!
+> 참고: `Configuration`이 컴포넌트 스캔의 대상이 된 이유도 `@Configuration` 소스코드를 열어보면 `@Component` 애노테이션이 붙어있기 때문이다.
+
+< 예시 - OrderServiceImpl `@Component`, `@Autowired` 추가 >
+```java
+@Component
+  public class OrderServiceImpl implements OrderService {
+      private final MemberRepository memberRepository;
+      private final DiscountPolicy discountPolicy;
+      
+ @Autowired
+      public OrderServiceImpl(MemberRepository memberRepository, DiscountPolicy discountPolicy) {
+          this.memberRepository = memberRepository;
+          this.discountPolicy = discountPolicy;
+      }
+}
+```
+
+- `@Autowired`는 의존관계를 자동으로 주입해준다.
+- 상단의 코드처럼 생성자 주입 방식으로 `@Autowired`를 사용하면 생성자에서 여러 의존관계도 한번에 주입받을 수 있다. 
+
+#### [ 동작 방식 ]
+1. **@ComponentScan**
+   - `@ComponentScan`은 `@Component`가 붙은 모든 클래스를 스프링 빈으로 등록한다.
+   - 스프링 빈의 기본 이름은 클래스명을 사용하되 맨 앞글자만 소문자를 사용한다.
+     - **빈 이름 기본 전략:** MemberServiceImpl 클래스 -> memberServiceImpl 
+     - **빈 이름 직접 지정:** 스프링 빈의 이름을 직접 지정하고 싶으면 `Component("memberService2")` 이런식으로 이름을 부여하면 된다.
+2. `@Autowired` 의존관계 자동 주입
+   - 생성자에 `@Autowired`를 지정하면, 스프링 컨테이너가 자동으로 해당 스프링 빈을 찾아서 주입한다.
+   - 이때 기본 조회 전략은 타입이 같은 빈을 찾아서 주입한다.
+     - `getBean(MemberRepository.class)`와 동일하다고 이해하면 된다.
+
+#### [ 탐색 위치 ]
+
+**탐색할 패키지의 시작 위치 지정:** 모든 자바 클래스를 모두 컴포넌트 스캔하면 시간이 오래 걸려, 꼭 필요한 위치부터 탐색하도록 시작 위치를 지정할 수 있다.
+
+```java
+@ComponentScan(
+          basePackages = "hello.core",
+}
+```
+- `basePackages`: 탐색할 패키지의 시작 위치를 지정한다. 이 패키지를 포함해서 하위 패키지를 모두 탐색한다.
+  - `basePackages = {"hello.core", "hello.service"}` 이렇게 여러 시작 위치를 지정할 수도 있다.
+- `basePackageClasses`: 지정한 클래스의 패키지를 탐색 시작 위치로 지정한다.
+  - 따로 지정하지 않으면 `@ComponentScan`이 붙은 설정 정보 클래스의 패키지가 시작 위치가 된다.
+
+**< 영한님께서 권장하시는 방법! >**
+
+개인적으로 즐겨 사용하는 방법은 패키지 위치를 지정하지 않고, 설정 정보 클래스의 위치를 프로젝트 최상단에 두는 것이다. 최근 스프링 부트도 이 방법을 기본으로 제공한다.
+
+예를 들어서 프로젝트가 다음과 같이 구조가 되어 있으면
+
+- `com.hello`
+- `com.hello.service`
+- `com.hello.repository`
+
+`com.hello` -> 프로젝트 시작 루트, 여기에 AppConfig 같은 메인 설정 정보를 두고, 
+@ComponentScan 애노테이션을 붙이고, `basePackages` 지정은 생략한다.
+
+이렇게 하면 `com.hello`를 포함한 하위는 모두 자동으로 컴포넌트 스캔의 대상이 된다. 그리고 프로젝트 메인 설정 정보는 프로젝트를 대표하는 정보이기 때문에 프로젝트 시작 루트 위치에 두는 것이 좋다고 생각한다.
+
+참고로 스프링 부트를 사용하면 스프링 부트의 대표 시작 정보인 `@SpringBootApplication`을 이 프로젝트 
+시작 루트 위치에 두는 것이 관례이다. 그리고 이 설정안에 바로 `@ComponentScan`이 들어있다!
+
+#### [ 컴포넌트 스캔 기본 대상 ]
+컴포넌트 스캔은 `@Component`뿐만 아니라 다음과 같은 내용도 추가로 대상에 포함하며, 컴포넌트 스캔의 용도 뿐만 아니라 다음 애노테이션이 있으면 스프링은 부가 기능을 수행한다.
+- `@Controller`: 스프링 MVC 컨트롤러로 인식
+- `@Repository`: 스프링 데이터 접근 계층으로 인식하고, 데이터 계층의 예외를 스프링 예외로 변환해준다.
+- `@Configuration`: 스프링 설정 정보로 인식하고, 스프링 빈이 싱글톤을 유지하도록 추가 처리를 한다.
+- `@Service`: `@Service`는 특별한 처리는 하지 않는다. 대신 개발자들이 핵심 비즈니스 로직이 여기에 있겠구나 라고 비즈니스 계층을 인식하는데 도움이 된다.
+
+#### [ 필터 ]
+- `includeFilters`: 컴포넌트 스캔 대상을 추가로 지정한다.
+- `excludeFilters`: 컴포넌트 스캔에서 제외할 대상을 지정한다.
+
+**< FilterType 옵션 >**
+
+: FilterType은 5가지 옵션이 있다.
+- ANNOTATION: 기본값, 애노테이션을 인식해서 동작한다.
+  - ex) `org.example.SomeAnnotation`
+- ASSIGNABLE_TYPE: 지정한 타입과 자식 타입을 인식해서 동작한다.
+  - ex) `org.example.SomeClass`
+- ASPECTJ: AspectJ 패턴 사용
+  - ex)`org.example..*Service+`
+- REGEX: 정규 표현식
+  - ex)`org\.example\.Default.*`
+- CUSTOM:`TypeFilter`라는 인터페이스를 구현해서 처리
+  - ex) `org.example.MyTypeFilter`
+
+> 참고: `Component`면 충분하기 때문에, `includeFilters`를 사용할 일은 거의 없다. `excludeFilters`는 여러가지 이유로 간혹 사용할 때가 있지만 많지는 않다.
+> 
+> 특히 최근 스프링 부트는 컴포넌트 스캔을 기본으로 제공하는데, 개인적으로는 옵션을 변경하면서 사용하기 보다는 스프링의 기본 설정에 최대한 맞추어 사용하는 것을 권장하고, 선호하는 편이다.
+> 
+> by. 영한님
+
+#### [ 중복 등록과 충돌 ]
+컴포넌트 스캔에서 같은 빈 이름을 등록하면 어떻게 될까? <br>
+다음 두 가지 상황이 있다.
+
+1. 자동 빈 등록 vs 자동 빈 등록
+2. 수동 빈 등록 vs 자동 빈 등록
+
+**< 자동 빈 등록 vs 자동 빈 등록 >**
+- 컴포넌트 스캔에 의해 자동으로 스프링 빈이 등록되는데, 그 이름이 같은 경우 스프링은 오류를 발생시킨다.
+  - `ConflictingBeanDefinitionException` 예외 발생
+
+
+**< 수동 빈 등록 vs 자동 빈 등록 >** <br>
+- 이 경우 수동 빈 등록이 우선권을 가진다.
+  - 수동 빈이 자동 빈을 오버라이딩 해버린다.
+
+<br>
+
+**수동 빈 등록시 남는 로그**
+```
+Overriding bean definition for bean 'memoryMemberRepository' with a different 
+definition: replacing
+```
+
+물론 개발자가 의도적으로 이런 결과를 기대했다면, 자동 보다는 수동이 우선권을 가지는 것이 좋다. 하지만 현실은 개발자가 의도적으로 설정해서 이런 결과가 만들어지기 보다는 여러 설정들이 꼬여서 이런 결과가 만들어지는 경우가 대부분이다.
+
+**그러면 정말 잡기 어려운 버그가 만들어진다. 항상 잡기 어려운 버그는 애매한 버그다.** 
+
+그래서 최근 스프링 부트에서는 수동 빈 등록과 자동 빈 등록이 충돌나면 오류가 발생하도록 기본 값을 바꾸었다.
+
+<br>
+
+**수동 빈 등록, 자동 빈 등록 오류 시 스프링 부트 에러**
+```
+Consider renaming one of the beans or enabling overriding by setting 
+spring.main.allow-bean-definition-overriding=true
+```
+
+스프링 부트인 `CoreApplication`을 실행해보면 오류를 볼 수 있다.
